@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="Data/As_Selection.js"></script>
+    <script src="Data/Cr_Selection.js"></script>
+    <script src="Data/Pb_Selection.js"></script>
+    <script src="Data/Zn_Selected.js"></script>
+    <style>
+        #map {position: absolute; top: 0; bottom: 0; right: 0; left: 0;}
+        .legend {text-align: left; 
+            line-height: 18px; 
+            color: #555; 
+            background-color: white; 
+            padding: 6px 8px; 
+            font-size: 12px; 
+            border-radius: 5px;
+        }
+        .legend i { 
+            width: 18px;
+            height: 18px;
+            float: left;
+            margin-right: 8px;
+        }
+        .info h4 { 
+            margin-top: 0;
+            margin-bottom: 0;
+        }
+    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <div id = "map"></div>
+    <script>
+        //Setting map view to Shymkent, Kazakhstan and the zoom level to 15
+        //Using MapTiler's satellite layer for the map tiles and adding contributor attribution
+        var map = L.map('map').setView([42.314444, 69.548611], 15 );
+        L.tileLayer('https://api.maptiler.com/maps/satellite/{z}/{x}/{y}.jpg?key=Kan0xiDWpL17lC79NyoI', 
+            {attribution: '<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>',
+        }).addTo(map);
+
+        //Setting color scheme based on the feature and concentration for that metal
+        function colorScheme(feature, thresholds) {
+                return feature > thresholds[0] ?  '#6900a0' :
+                       feature > thresholds[1] ?  '#ff0000' :
+                       feature > thresholds[2] ?  '#ff8b12' :
+                       feature > thresholds[3] ?  '#ffe300' :
+                                                  '#1a9641' ;
+        }
+
+        //Adding circullar marker option for data
+            var styling = function style(feature, thresholds) {
+                return {
+                    radius: 5,
+                    fillColor: colorScheme(feature, thresholds),
+                    color: "#000",
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 1
+                };
+            };
+
+        var thresholds = {
+            As: {
+                grades: [999, 99, 34, 9]},
+            Cr: {
+                grades: [199, 99, 69, 34]},
+            Pb: {
+                grades: [9999, 1999, 199, 31]},
+            Zn: {
+                grades: [22999, 2299, 229, 23]}
+            }
+        
+        //Brining in surface data from geojson file and using geojsonMarkerOption for styling
+        var AsSurfaceLayer = L.geoJSON(AsSurfaceData, {
+            pointToLayer: function(feature, latlng){
+                    return L.circleMarker(latlng, styling(feature.properties.As, thresholds.As.grades));
+                        
+            },
+            onEachFeature: function(feature, layer){
+                layer.bindPopup('<h2>' + feature.properties.Location + '</h2> <p> As Concentration: ' + feature.properties.As + ' ppm</p>\
+                <img src = "./Photos/' + feature.properties.filename + '.jpg" style="width:150px">')
+            }
+        })
+        
+
+        var CrSurfaceLayer = L.geoJSON(CrSurfaceData, {
+            pointToLayer: function(feature, latlng){
+                    return L.circleMarker(latlng, styling(feature.properties.Cr, thresholds.Cr.grades));
+            },
+            onEachFeature: function(feature, layer){
+                layer.bindPopup('<h2>' + feature.properties.Location + '</h2> <p> Cr Concentration: ' + feature.properties.Cr + ' ppm</p>\
+                <img src = "./Photos/' + feature.properties.filename + '.jpg" style="width:150px">')
+            },
+        });
+        
+
+        var PbSurfaceLayer = L.geoJSON(PbSurfaceData, {
+            pointToLayer: function(feature, latlng){
+                    return L.circleMarker(latlng, styling(feature.properties.Pb, thresholds.Pb.grades));
+            },
+            onEachFeature: function(feature, layer){
+                layer.bindPopup('<h2>' + feature.properties.Location + '</h2> <p> Pb Concentration: ' + feature.properties.Pb + ' ppm</p>\
+                <img src = "./Photos/' + feature.properties.filename + '.jpg" style="width:150px">')
+            }
+        }).addTo(map);
+        
+
+        var ZnSurfaceLayer = L.geoJSON(ZnSurfaceData, {
+            pointToLayer: function(feature, latlng){
+                    return L.circleMarker(latlng, styling(feature.properties.Zn, thresholds.Zn.grades));
+            },
+            onEachFeature: function(feature, layer){
+                layer.bindPopup('<h2>' + feature.properties.Location + '</h2> <p> Zn Concentration: ' + feature.properties.Zn + ' ppm</p>\
+                <img src = "./Photos/' + feature.properties.filename + '.jpg" style="width:150px">');
+                updateLegend('Zn')
+            }
+        });
+        
+        //Layer control
+        const overlayMaps = {
+            'Arsenic (As) Samples': AsSurfaceLayer,
+            'Chromium (Cr) Samples': CrSurfaceLayer,
+            'Lead (Pb) Samples': PbSurfaceLayer,
+            'Zinc (Zn) Samples': ZnSurfaceLayer
+            
+        };
+        var layerControl = L.control.layers(overlayMaps, null, {collapsed: false}).addTo(map);
+
+        //Adding Scale bar
+        L.control.scale({
+            metric: true,
+            imperial: true,
+            position: 'bottomleft',
+            maxWidth: 100
+        }).addTo(map);
+
+
+         //Adding a legend to the map
+         var legend = L.control({position: 'bottomright'});
+         
+         function updateLegend(layerName) {
+            var div = L.DomUtil.get('legend-div');
+            if (!div) return;
+            var legendData = thresholds[layerName];
+            var grades = legendData.grades.slice().reverse();
+            var colors = ['#1a9641', '#ffe300','#ff8b12','#ff0000','#6900a0'];
+
+            div.innerHTML = '<h4>' + layerName +  ' Concentraiton (mg/kg)</h4>'
+
+            for (var i = 0; i < colors.length; i++) {
+                div.innerHTML += 
+                    '<i style="background:'+ colors[i] + '"></i> ' +
+                    (i === 0 ? '<' + grades[i] + '<br>' : 
+                    (grades[i - 1] + 1).toLocaleString() + (grades[i] ? '&ndash;' + grades[i].toLocaleString() + '<br>' : '+' + '<br>')
+                );
+            }
+         }
+        legend.onAdd = function(map) {
+            var div = L.DomUtil.create('div', 'info legend');
+            div.id = 'legend-div';
+            return div;
+        };
+        legend.addTo(map);
+
+        //Updating legend when layer is changed
+        map.on('baselayerchange', function(event) {
+            var match = event.name.match(/\((.*?)\)/); 
+            if (match && match[1]) { 
+                var layerName = match[1];
+                updateLegend(layerName);
+            }
+        });
+        updateLegend('Pb');
+
+
+    </script>
+</body>
+</html>
